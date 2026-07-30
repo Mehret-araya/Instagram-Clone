@@ -9,9 +9,7 @@ import {
     viewStory,
 } from "../controllers/storyController.js";
 
-
 const router = express.Router();
-
 
 // Create Story
 router.post(

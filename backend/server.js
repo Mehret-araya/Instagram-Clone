@@ -13,6 +13,9 @@ import followRoutes from "./routes/followRoutes.js";
 import searchRoutes from "./routes/searchRoutes.js";
 import exploreRoutes from "./routes/exploreRoutes.js";
 import storyRoutes from "./routes/storyRoutes.js";
+import messageRoutes from "./routes/messageRoutes.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
+import errorMiddleware from "./middleware/errorMiddleware.js";
 
 dotenv.config();
 
@@ -35,13 +38,20 @@ app.use("/api/follow", followRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/explore", exploreRoutes);
 app.use("/api/stories", storyRoutes);
-
+app.use(
+    "/api/messages",
+    messageRoutes
+);
+app.use(
+    "/api/notifications",
+    notificationRoutes
+);
 
 // Test Route
 app.get("/", (req, res) => {
     res.send("Instagram API Running");
 });
-
+app.use(errorMiddleware);
 
 const PORT = process.env.PORT || 5000;
 

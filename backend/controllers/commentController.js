@@ -1,4 +1,5 @@
 import Post from "../models/Post.js";
+import Notification from "../models/Notification.js";
 // Delete Comment
 export const deleteComment = async (req, res) => {
   try {
@@ -65,6 +66,30 @@ export const addComment = async (req, res) => {
     });
 
     await post.save();
+
+
+// Create comment notification
+
+if(post.user.toString() !== req.user._id.toString()){
+
+
+    await Notification.create({
+
+        receiver: post.user,
+
+        sender: req.user._id,
+
+        type:"comment",
+
+        post:post._id,
+
+        message:"Someone commented on your post"
+
+    });
+
+
+}
+
 
     res.status(201).json({
       message: "Comment added successfully",

@@ -27,6 +27,11 @@ const postSchema = new mongoose.Schema(
         type:String,
         maxlength:2200
     },
+    hashtags:[
+    {
+        type:String
+    }
+],
 
 
     likes:[
