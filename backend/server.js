@@ -1,3 +1,5 @@
+import http from "http";
+import { initSocket } from "./socket/socket.js";
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -10,7 +12,7 @@ import commentRoutes from "./routes/commentRoutes.js";
 import followRoutes from "./routes/followRoutes.js";
 import searchRoutes from "./routes/searchRoutes.js";
 import exploreRoutes from "./routes/exploreRoutes.js";
-
+import storyRoutes from "./routes/storyRoutes.js";
 
 dotenv.config();
 
@@ -32,7 +34,7 @@ app.use("/api/comments", commentRoutes);
 app.use("/api/follow", followRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/explore", exploreRoutes);
-
+app.use("/api/stories", storyRoutes);
 
 
 // Test Route
@@ -44,6 +46,16 @@ app.get("/", (req, res) => {
 const PORT = process.env.PORT || 5000;
 
 
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+const server = http.createServer(app);
+
+
+initSocket(server);
+
+
+server.listen(PORT, ()=>{
+
+    console.log(
+        `Server running on port ${PORT}`
+    );
+
 });

@@ -1,7 +1,10 @@
 import express from "express";
 import authMiddleware from "../middleware/authMiddleware.js";
 import {
-  getPopularPosts
+  getPopularPosts,
+  getTrendingHashtags,
+  getSuggestedUsers,
+  getRecommendations
 } from "../controllers/exploreController.js";
 
 
@@ -15,5 +18,22 @@ router.get(
   getPopularPosts
 );
 
+// Trending Hashtags
+router.get(
+  "/hashtags",
+  authMiddleware,
+  getTrendingHashtags
+);
+// Suggested Users
+router.get(
+  "/users",
+  authMiddleware,
+  getSuggestedUsers
+);
 
+router.get(
+  "/recommendations",
+  authMiddleware,
+  getRecommendations
+);
 export default router;
