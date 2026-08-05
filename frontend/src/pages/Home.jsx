@@ -68,13 +68,15 @@ const Home = () => {
             </h3>
 
 
-            {post.image?.url && (
-              <img
-                src={post.image.url}
-                alt="Post"
-                width="300"
-              />
-            )}
+        {post.image && (
+  <img
+    src={post.image}
+    alt="Post"
+    width="300"
+  />
+)}
+
+
 
 
             <p>
