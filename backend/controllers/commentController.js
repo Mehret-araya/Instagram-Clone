@@ -45,6 +45,121 @@ export const deleteComment = async (req, res) => {
 
   }
 };
+export const addReply = async (req,res)=>{
+
+try{
+
+const {text}=req.body;
+
+
+const post = await Post.findById(req.params.postId);
+
+
+if(!post){
+
+return res.status(404).json({
+message:"Post not found"
+});
+
+}
+
+
+const comment = post.comments.id(
+req.params.commentId
+);
+
+
+if(!comment){
+
+return res.status(404).json({
+message:"Comment not found"
+});
+
+}
+
+
+comment.replies.push({
+
+user:req.user._id,
+
+text
+
+});
+
+
+await post.save();
+
+
+res.status(201).json({
+
+message:"Reply added successfully",
+
+comments:post.comments
+
+});
+
+
+}catch(error){
+
+res.status(500).json({
+message:error.message
+});
+
+}
+
+};
+
+// Add Reply
+export const addReply = async (req, res) => {
+  try {
+
+    const { postId, commentId } = req.params;
+    const { text } = req.body;
+
+
+    const post = await Post.findById(postId);
+
+
+    if (!post) {
+      return res.status(404).json({
+        message: "Post not found",
+      });
+    }
+
+
+    const comment = post.comments.id(commentId);
+
+
+    if (!comment) {
+      return res.status(404).json({
+        message: "Comment not found",
+      });
+    }
+
+
+    comment.replies.push({
+      user: req.user._id,
+      text,
+    });
+
+
+    await post.save();
+
+
+    res.status(201).json({
+      message: "Reply added successfully",
+      replies: comment.replies,
+    });
+
+
+  } catch(error){
+
+    res.status(500).json({
+      message:error.message,
+    });
+
+  }
+};
 
 // Add Comment
 export const addComment = async (req, res) => {
@@ -87,11 +202,9 @@ if(post.user.toString() !== req.user._id.toString()){
 
     });
 
-
 }
 
-
-    res.status(201).json({
+   res.status(201).json({
       message: "Comment added successfully",
       comments: post.comments,
     });

@@ -5,6 +5,7 @@ const Home = () => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [commentText, setCommentText] = useState({});
 
   useEffect(() => {
     fetchPosts();
@@ -19,7 +20,6 @@ const Home = () => {
       const postsData = response.data.posts || response.data;
 
       setPosts(postsData);
-
     } catch (error) {
       console.error(
         "Failed to fetch posts:",
@@ -27,11 +27,123 @@ const Home = () => {
       );
 
       setError("Failed to load posts");
-
     } finally {
       setLoading(false);
     }
   };
+
+const handleLike = async (postId) => {
+  try {
+
+    const post = posts.find(
+      (post) => post._id === postId
+    );
+
+    const alreadyLiked = post.likes.length > 0;
+
+
+    if (alreadyLiked) {
+
+      await api.delete(`/likes/${postId}`);
+
+
+      setPosts((previousPosts) =>
+        previousPosts.map((post) =>
+          post._id === postId
+            ? {
+                ...post,
+                likes: [],
+              }
+            : post
+        )
+      );
+
+
+    } else {
+
+      await api.post(`/likes/${postId}`);
+
+
+      setPosts((previousPosts) =>
+        previousPosts.map((post) =>
+          post._id === postId
+            ? {
+                ...post,
+                likes: [
+                  ...post.likes,
+                  "liked",
+                ],
+              }
+            : post
+        )
+      );
+
+    }
+
+
+  } catch (error) {
+
+    console.error(
+      "Like error:",
+      error.response?.data || error.message
+    );
+
+  }
+};
+
+
+
+const handleComment = async (postId) => {
+  try {
+
+    const text = commentText[postId];
+
+    if (!text) {
+      return;
+    }
+
+
+    const response = await api.post(
+      `/comments/${postId}`,
+      {
+        text,
+      }
+    );
+
+
+    console.log(
+      "Comment response:",
+      response.data
+    );
+
+
+    setPosts((previousPosts) =>
+      previousPosts.map((post) =>
+        post._id === postId
+          ? {
+              ...post,
+              comments: response.data.comments,
+            }
+          : post
+      )
+    );
+
+
+    setCommentText({
+      ...commentText,
+      [postId]: "",
+    });
+
+
+  } catch (error) {
+
+    console.error(
+      "Comment error:",
+      error.response?.data || error.message
+    );
+
+  }
+};
 
 
   if (loading) {
@@ -45,11 +157,20 @@ const Home = () => {
 
 
   return (
-    <div>
+    <div
+      style={{
+        maxWidth: "600px",
+        margin: "20px auto",
+      }}
+    >
+
       <h1>Home Feed</h1>
 
+
       {posts.length === 0 ? (
+
         <p>No posts yet.</p>
+
       ) : (
 
         posts.map((post) => (
@@ -57,36 +178,133 @@ const Home = () => {
           <div
             key={post._id}
             style={{
-              border: "1px solid #ccc",
+              border: "1px solid #ddd",
+              borderRadius: "10px",
               marginBottom: "20px",
-              padding: "15px",
+              overflow: "hidden",
+              backgroundColor: "#fff",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
             }}
           >
 
-            <h3>
+
+            <div
+              style={{
+                padding: "10px",
+                fontWeight: "bold",
+              }}
+            >
               {post.user?.username || "Unknown User"}
-            </h3>
+            </div>
 
 
-        {post.image && (
-  <img
-    src={post.image}
-    alt="Post"
-    width="300"
+
+            {post.image?.url && (
+
+              <img
+                src={post.image.url}
+                alt="Post"
+                style={{
+                  width:"100%",
+                  maxHeight:"500px",
+                  objectFit:"cover",
+                }}
+              />
+
+            )}
+
+
+
+            <div
+              style={{
+                padding:"15px",
+              }}
+            >
+
+              <p>
+                {post.caption}
+              </p>
+
+
+              <button
+                onClick={() => handleLike(post._id)}
+                style={{
+                  padding:"8px 15px",
+                  border:"none",
+                  borderRadius:"5px",
+                  backgroundColor:"#0095f6",
+                  color:"white",
+                  cursor:"pointer",
+                }}
+              >
+                ❤️ Like
+              </button>
+
+
+              <p>
+                {post.likes?.length || 0} Likes
+              </p>
+
+
+              <div>
+
+  <input
+    type="text"
+    placeholder="Add a comment..."
+    value={commentText[post._id] || ""}
+    onChange={(e) =>
+      setCommentText({
+        ...commentText,
+        [post._id]: e.target.value,
+      })
+    }
+    style={{
+      padding:"8px",
+      width:"70%",
+      marginRight:"5px",
+    }}
   />
-)}
 
 
+  <button
+    onClick={() => handleComment(post._id)}
+    style={{
+      padding:"8px",
+      cursor:"pointer",
+    }}
+  >
+    Comment
+  </button>
 
 
-            <p>
-              {post.caption}
-            </p>
+</div>
+
+<div>
+
+{
+post.comments?.map((comment,index)=>(
+  
+
+<p key={index}>
+  <strong>
+    {comment.user?.username || "User"}
+  </strong>
+  {" "}
+  {comment.text}
+</p>
+
+))
+}
+
+</div>
+
+            </div>
 
 
           </div>
 
         ))
+
       )}
 
     </div>

@@ -1,17 +1,25 @@
 import Post from "../models/Post.js";
 import cloudinary from "../config/cloudinary.js";
 
-
 // Create Post
 export const createPost = async (req, res) => {
   try {
 
-    const { caption, hashtags } = req.body;
+    console.log("========== CREATE POST REQUEST ==========");
+    console.log("User:", req.user);
+    console.log("Body:", req.body);
+    console.log("File:", req.file);
 
-    console.log("File received:", req.file);
-    console.log("Body received:", req.body);
+
+    // Check authentication
+    if (!req.user) {
+      return res.status(401).json({
+        message: "User not authenticated",
+      });
+    }
 
 
+    // Check image upload
     if (!req.file) {
       return res.status(400).json({
         message: "Please upload an image",
@@ -19,8 +27,40 @@ export const createPost = async (req, res) => {
     }
 
 
+    const { caption, hashtags } = req.body;
+
+
+    let hashtagArray = [];
+
+    if (hashtags) {
+
+      if (Array.isArray(hashtags)) {
+        hashtagArray = hashtags;
+      } 
+      else {
+        hashtagArray = hashtags
+          .split(",")
+          .map(tag => tag.trim())
+          .filter(tag => tag.length > 0);
+      }
+
+    }
+
+
+    // Support both middleware styles
+    const userId = req.user._id || req.user.id;
+
+
+    if (!userId) {
+      return res.status(400).json({
+        message: "User ID missing from authentication",
+      });
+    }
+
+
     const post = await Post.create({
-      user: req.user._id,
+
+      user: userId,
 
       image: {
         url: req.file.path,
@@ -28,22 +68,36 @@ export const createPost = async (req, res) => {
       },
 
       caption,
-       hashtags
+
+      hashtags: hashtagArray,
+
     });
 
 
+    console.log("========== POST CREATED ==========");
+    console.log(post);
+
+
     res.status(201).json({
+
       message: "Post created successfully",
+
       post,
+
     });
 
 
   } catch (error) {
 
-    console.error("Create Post Error:", error);
+
+    console.error("========== CREATE POST ERROR ==========");
+    console.error(error);
+
 
     res.status(500).json({
+
       message: error.message,
+
     });
 
   }
@@ -51,25 +105,33 @@ export const createPost = async (req, res) => {
 
 
 
+
+
 // Get All Posts
 export const getAllPosts = async (req, res) => {
   try {
 
+    
     const posts = await Post.find()
-      .populate("user", "username profilePicture")
-      .sort({ createdAt: -1 });
+  .populate("user", "username profilePicture")
+  .populate("comments.user", "username profilePicture")
+  .sort({ createdAt:-1 });
 
 
     res.status(200).json(posts);
 
 
-  } catch (error) {
+  } 
 
-    res.status(500).json({
-      message: error.message,
-    });
+  catch (error) {
 
-  }
+  console.error("GET POSTS ERROR:", error);
+
+  res.status(500).json({
+    message: error.message,
+  });
+
+}
 };
 
 

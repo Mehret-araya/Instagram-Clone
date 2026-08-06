@@ -46,10 +46,22 @@ const CreatePost = () => {
       alert("Post created successfully!");
 
       navigate("/");
-    } catch (error) {
-      console.error(error);
-      alert("Failed to create post.");
-    } finally {
+    } 
+    catch (error) {
+
+  console.error("Axios Error:", error);
+
+  console.log("Status:", error.response?.status);
+
+  console.log("Response:", error.response?.data);
+
+  alert(
+    error.response?.data?.message || 
+    "Failed to create post."
+  );
+}
+    
+    finally {
       setLoading(false);
     }
   };

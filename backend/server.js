@@ -1,8 +1,9 @@
+import "dotenv/config";
+
 import http from "http";
 import { initSocket } from "./socket/socket.js";
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import postRoutes from "./routes/postRoutes.js";
@@ -16,8 +17,6 @@ import storyRoutes from "./routes/storyRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import errorMiddleware from "./middleware/errorMiddleware.js";
-
-dotenv.config();
 
 const app = express();
 
