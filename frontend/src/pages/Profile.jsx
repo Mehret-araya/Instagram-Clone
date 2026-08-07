@@ -30,6 +30,14 @@ const Profile = () => {
       console.log("Profile response:", response.data);
 
       setUser(response.data.user);
+      const currentUserId = localStorage.getItem("userId");
+
+const alreadyFollowing =
+  response.data.user.followers?.some(
+    (follower) => follower.toString() === currentUserId
+  );
+
+setIsFollowing(alreadyFollowing);
 
     } catch (error) {
 
@@ -48,7 +56,6 @@ const Profile = () => {
 
 
 const handleFollow = async () => {
-
   try {
 
     if (isFollowing) {
@@ -61,16 +68,9 @@ const handleFollow = async () => {
 
     }
 
+    await fetchProfile();
 
-    // Reload latest profile data from database
-    fetchProfile();
-
-
-    // Change button text
-    setIsFollowing(!isFollowing);
-
-
-  } catch(error) {
+  } catch (error) {
 
     console.error(
       "Follow error:",
@@ -78,9 +78,8 @@ const handleFollow = async () => {
     );
 
   }
-
-};   
-
+};
+  
 
   if (loading) {
     return <h2>Loading profile...</h2>;
