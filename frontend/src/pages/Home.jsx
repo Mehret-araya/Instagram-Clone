@@ -6,6 +6,7 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [commentText, setCommentText] = useState({});
+  const [savedPosts, setSavedPosts] = useState([]);
 
   useEffect(() => {
     fetchPosts();
@@ -145,6 +146,31 @@ const handleComment = async (postId) => {
   }
 };
 
+const handleSave = async (postId) => {
+  try {
+    const alreadySaved = savedPosts.includes(postId);
+
+    if (alreadySaved) {
+      await api.delete(`/saved/${postId}`);
+
+      setSavedPosts((previous) =>
+        previous.filter((id) => id !== postId)
+      );
+    } else {
+      await api.post(`/saved/${postId}`);
+
+      setSavedPosts((previous) => [
+        ...previous,
+        postId,
+      ]);
+    }
+  } catch (error) {
+    console.error(
+      "Save error:",
+      error.response?.data || error.message
+    );
+  }
+};
 
   if (loading) {
     return <h2>Loading posts...</h2>;
@@ -239,6 +265,24 @@ const handleComment = async (postId) => {
               >
                 ❤️ Like
               </button>
+
+
+              <button
+  onClick={() => handleSave(post._id)}
+  style={{
+    padding: "8px 15px",
+    border: "none",
+    borderRadius: "5px",
+    backgroundColor: "#555",
+    color: "white",
+    cursor: "pointer",
+    marginLeft: "10px",
+  }}
+>
+  {savedPosts.includes(post._id)
+    ? "🔖 Saved"
+    : "🔖 Save"}
+</button>
 
 
               <p>

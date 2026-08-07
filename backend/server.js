@@ -17,6 +17,7 @@ import storyRoutes from "./routes/storyRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import errorMiddleware from "./middleware/errorMiddleware.js";
+import savedRoutes from "./routes/savedRoutes.js";
 
 const app = express();
 
@@ -37,6 +38,7 @@ app.use("/api/follow", followRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/explore", exploreRoutes);
 app.use("/api/stories", storyRoutes);
+app.use("/api/saved", savedRoutes);
 app.use(
     "/api/messages",
     messageRoutes
