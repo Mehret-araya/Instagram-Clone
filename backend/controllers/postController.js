@@ -120,7 +120,6 @@ export const getAllPosts = async (req, res) => {
 
     res.status(200).json(posts);
 
-
   } 
 
   catch (error) {
@@ -162,15 +161,12 @@ export const getPostById = async (req, res) => {
 
   }
 };
-
-
-
 // Update Post
 export const updatePost = async (req, res) => {
   try {
+    const { caption, hashtags } = req.body;
 
     const post = await Post.findById(req.params.id);
-
 
     if (!post) {
       return res.status(404).json({
@@ -178,41 +174,35 @@ export const updatePost = async (req, res) => {
       });
     }
 
-
+    // Only the owner can update the post
     if (post.user.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         message: "You cannot update this post",
       });
     }
 
+    // Update caption
+    if (caption !== undefined) {
+      post.caption = caption;
+    }
 
-    const updatedPost = await Post.findByIdAndUpdate(
-      req.params.id,
-      {
-        caption: req.body.caption,
-      },
-      {
-        new: true,
-      }
-    );
+    // Update hashtags
+    if (hashtags !== undefined) {
+      post.hashtags = hashtags;
+    }
 
+    await post.save();
 
     res.status(200).json({
       message: "Post updated successfully",
-      post: updatedPost,
+      post,
     });
-
-
   } catch (error) {
-
     res.status(500).json({
       message: error.message,
     });
-
   }
 };
-
-
 
 // Delete Post
 export const deletePost = async (req, res) => {

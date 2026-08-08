@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 
@@ -9,19 +9,41 @@ const Explore = () => {
   const [users, setUsers] = useState([]);
   const [posts, setPosts] = useState([]);
   const [hashtagPosts, setHashtagPosts] = useState([]);
+  const [recentSearches, setRecentSearches] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  // Load recent searches when Explore opens
+  useEffect(() => {
+    fetchRecentSearches();
+  }, []);
+
+  const fetchRecentSearches = async () => {
+    try {
+      const response = await api.get("/search/recent");
+
+      setRecentSearches(
+        response.data.recentSearches || []
+      );
+    } catch (error) {
+      console.error(
+        "Recent searches error:",
+        error.response?.data || error.message
+      );
+    }
+  };
+
+  // Search users, posts and hashtags
   const handleSearch = async (e) => {
     const value = e.target.value;
 
     setSearch(value);
 
     if (!value.trim()) {
-  setUsers([]);
-  setPosts([]);
-  setHashtagPosts([]);
-  return;
-}
+      setUsers([]);
+      setPosts([]);
+      setHashtagPosts([]);
+      return;
+    }
 
     try {
       setLoading(true);
@@ -30,20 +52,11 @@ const Explore = () => {
       const response = await api.get(
         `/search/users?q=${value}`
       );
-      const hashtagResponse = await api.get(
-  `/search/hashtags?q=${value}`
-);
 
-console.log(
-  "Hashtag search response:",
-  hashtagResponse.data
-);
-
-setHashtagPosts(
-  hashtagResponse.data.posts || []
-);
-
-      console.log("Search response:", response.data);
+      console.log(
+        "Search response:",
+        response.data
+      );
 
       setUsers(
         response.data.users || []
@@ -63,9 +76,109 @@ setHashtagPosts(
         postResponse.data.posts || []
       );
 
+      // Search hashtags
+      const hashtagResponse = await api.get(
+        `/search/hashtags?q=${value}`
+      );
+
+      console.log(
+        "Hashtag search response:",
+        hashtagResponse.data
+      );
+
+      setHashtagPosts(
+        hashtagResponse.data.posts || []
+      );
+
     } catch (error) {
       console.error(
         "Search error:",
+        error.response?.data || error.message
+      );
+
+      setUsers([]);
+      setPosts([]);
+      setHashtagPosts([]);
+
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Save search when user presses Enter
+  const handleKeyDown = async (e) => {
+    if (e.key !== "Enter") {
+      return;
+    }
+
+    const value = search.trim();
+
+    if (!value) {
+      return;
+    }
+
+    try {
+      const response = await api.post(
+        "/search/recent",
+        {
+          search: value,
+        }
+      );
+
+      setRecentSearches(
+        response.data.recentSearches || []
+      );
+
+      console.log(
+        "Search saved:",
+        response.data
+      );
+
+    } catch (error) {
+      console.error(
+        "Save recent search error:",
+        error.response?.data || error.message
+      );
+    }
+  };
+
+  // Search again when clicking a recent search
+  const handleRecentSearchClick = async (item) => {
+    setSearch(item);
+
+    try {
+      setLoading(true);
+
+      // Search users
+      const response = await api.get(
+        `/search/users?q=${item}`
+      );
+
+      setUsers(
+        response.data.users || []
+      );
+
+      // Search posts
+      const postResponse = await api.get(
+        `/search/posts?q=${item}`
+      );
+
+      setPosts(
+        postResponse.data.posts || []
+      );
+
+      // Search hashtags
+      const hashtagResponse = await api.get(
+        `/search/hashtags?q=${item}`
+      );
+
+      setHashtagPosts(
+        hashtagResponse.data.posts || []
+      );
+
+    } catch (error) {
+      console.error(
+        "Recent search error:",
         error.response?.data || error.message
       );
 
@@ -92,6 +205,7 @@ setHashtagPosts(
         placeholder="Search users or posts..."
         value={search}
         onChange={handleSearch}
+        onKeyDown={handleKeyDown}
         style={{
           width: "100%",
           padding: "12px",
@@ -102,21 +216,44 @@ setHashtagPosts(
         }}
       />
 
+      {/* Recent Searches */}
+      {!search && recentSearches.length > 0 && (
+        <div
+          style={{
+            marginBottom: "20px",
+          }}
+        >
+          <h2>Recent Searches</h2>
+
+          {recentSearches.map((item, index) => (
+            <div
+              key={index}
+              onClick={() =>
+                handleRecentSearchClick(item)
+              }
+              style={{
+                padding: "10px",
+                borderBottom: "1px solid #ddd",
+                cursor: "pointer",
+              }}
+            >
+              {item}
+            </div>
+          ))}
+        </div>
+      )}
+
       {loading && (
         <p>Searching...</p>
       )}
 
       {!loading &&
-  search &&
-  users.length === 0 &&
-  posts.length === 0 &&
-  hashtagPosts.length === 0 && (
-    <p>No results found.</p>
-  )}
-
-
-
-
+        search &&
+        users.length === 0 &&
+        posts.length === 0 &&
+        hashtagPosts.length === 0 && (
+          <p>No results found.</p>
+        )}
 
       {/* Users */}
       {users.length > 0 && (
@@ -150,98 +287,116 @@ setHashtagPosts(
       )}
 
       {/* Posts */}
-{posts.length > 0 && (
-  <div>
-    <h2>Posts</h2>
+      {posts.length > 0 && (
+        <div>
+          <h2>Posts</h2>
 
-    {posts.map((post) => (
-      <div
-        key={post._id}
-        style={{
-          border: "1px solid #ddd",
-          borderRadius: "10px",
-          marginBottom: "20px",
-          overflow: "hidden",
-          backgroundColor: "#fff",
-        }}
-      >
-        {post.image?.url && (
-          <img
-            src={post.image.url}
-            alt="Post"
-            style={{
-              width: "100%",
-              maxHeight: "500px",
-              objectFit: "cover",
-            }}
-          />
-        )}
+          {posts.map((post) => (
+            <div
+              key={post._id}
+              style={{
+                border: "1px solid #ddd",
+                borderRadius: "10px",
+                marginBottom: "20px",
+                overflow: "hidden",
+                backgroundColor: "#fff",
+              }}
+            >
+              {post.image?.url && (
+                <img
+                  src={post.image.url}
+                  alt="Post"
+                  style={{
+                    width: "100%",
+                    maxHeight: "500px",
+                    objectFit: "cover",
+                  }}
+                />
+              )}
 
-        <div
-          style={{
-            padding: "12px",
-          }}
-        >
-          <h3>
-            {post.user?.username || "Unknown User"}
-          </h3>
+              <div
+                style={{
+                  padding: "12px",
+                }}
+              >
+                <h3>
+                  {post.user?.username ||
+                    "Unknown User"}
+                </h3>
 
-          <p>
-            {post.caption}
-          </p>
+                <p>
+                  {post.caption}
+                </p>
+              </div>
+            </div>
+          ))}
         </div>
-      </div>
-    ))}
-  </div>
-)}
+      )}
 
-{/* Hashtag Posts */}
-{hashtagPosts.length > 0 && (
-  <div>
-    <h2>Hashtag Posts</h2>
+      {/* Hashtag Posts */}
+      {hashtagPosts.length > 0 && (
+        <div>
+          <h2>Hashtag Posts</h2>
 
-    {hashtagPosts.map((post) => (
-      <div
-        key={post._id}
-        style={{
-          border: "1px solid #ddd",
-          borderRadius: "10px",
-          marginBottom: "20px",
-          overflow: "hidden",
-        }}
-      >
-        {post.image?.url && (
-          <img
-            src={post.image.url}
-            alt="Hashtag post"
-            style={{
-              width: "100%",
-              maxHeight: "500px",
-              objectFit: "cover",
-            }}
-          />
-        )}
+          {hashtagPosts.map((post) => (
+            <div
+              key={post._id}
+              style={{
+                border: "1px solid #ddd",
+                borderRadius: "10px",
+                marginBottom: "20px",
+                overflow: "hidden",
+                backgroundColor: "#fff",
+              }}
+            >
+              {post.image?.url && (
+                <img
+                  src={post.image.url}
+                  alt="Hashtag post"
+                  style={{
+                    width: "100%",
+                    maxHeight: "500px",
+                    objectFit: "cover",
+                  }}
+                />
+              )}
 
-        <div
-          style={{
-            padding: "12px",
-          }}
-        >
-          <h3>
-            {post.user?.username || "Unknown User"}
-          </h3>
+              <div
+                style={{
+                  padding: "12px",
+                }}
+              >
+                <h3>
+                  {post.user?.username ||
+                    "Unknown User"}
+                </h3>
 
-          <p>
-            {post.caption}
-          </p>
+                <p>
+                  {post.caption}
+                </p>
+
+                {post.hashtags?.length > 0 && (
+                  <p>
+                    {post.hashtags.map((tag) => (
+                      <span
+                        key={tag}
+                        style={{
+                          marginRight: "8px",
+                        }}
+                      >
+                        #{tag}
+                      </span>
+                    ))}
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
-      </div>
-    ))}
-  </div>
-)}
-                
+      )}
     </div>
   );
 };
 
 export default Explore;
+

@@ -1,8 +1,8 @@
 import express from "express";
 
 import authMiddleware from "../middleware/authMiddleware.js";
-import upload from "../middleware/uploadMiddleware.js";
-
+//import upload from "../middleware/uploadMiddleware.js";
+import storyUpload from "../middleware/storyUploadMiddleware.js";
 import {
     createStory,
     getStories,
@@ -15,7 +15,8 @@ const router = express.Router();
 router.post(
     "/",
     authMiddleware,
-    upload.single("image"),
+    //upload.single("image"),
+    storyUpload.single("image"),
     createStory
 );
 
