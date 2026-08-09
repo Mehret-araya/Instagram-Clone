@@ -1,12 +1,11 @@
 import { Server } from "socket.io";
 import Message from "../models/Message.js";
+import Notification from "../models/Notification.js";
 
 
 let io;
 
 const onlineUsers = new Map();
-
-
 
 export const initSocket = (server) => {
 
@@ -23,8 +22,6 @@ export const initSocket = (server) => {
 
     });
 
-
-
     io.on(
         "connection",
         (socket)=>{
@@ -34,8 +31,6 @@ export const initSocket = (server) => {
                 "User connected:",
                 socket.id
             );
-
-
 
             // User joins
             socket.on(
@@ -66,10 +61,6 @@ export const initSocket = (server) => {
 
                 }
             );
-
-
-
-
             // Send real-time message
             socket.on(
                 "sendMessage",
@@ -85,8 +76,6 @@ export const initSocket = (server) => {
                             text
                         } = data;
 
-
-
                         // Save message
                         const message =
                             await Message.create({
@@ -99,15 +88,18 @@ export const initSocket = (server) => {
 
                             });
 
-
+                            await Notification.create({
+  receiver,
+  sender,
+  type: "message",
+  message: "You received a new message"
+});
 
                         // Find receiver socket
                         const receiverSocket =
                             onlineUsers.get(
                                 receiver.toString()
                             );
-
-
 
                         // Send instantly
                         if(receiverSocket){
@@ -138,10 +130,6 @@ export const initSocket = (server) => {
                 }
             );
 
-
-
-
-
             // Typing indicator
             socket.on(
                 "typing",
@@ -152,8 +140,6 @@ export const initSocket = (server) => {
                         onlineUsers.get(
                             data.receiverId.toString()
                         );
-
-
 
                     if(receiverSocket){
 
@@ -173,10 +159,6 @@ export const initSocket = (server) => {
                 }
             );
 
-
-
-
-
             // Stop typing indicator
             socket.on(
                 "stopTyping",
@@ -187,8 +169,6 @@ export const initSocket = (server) => {
                         onlineUsers.get(
                             data.receiverId.toString()
                         );
-
-
 
                     if(receiverSocket){
 
@@ -208,10 +188,6 @@ export const initSocket = (server) => {
                 }
             );
 
-
-
-
-
             // User disconnects
             socket.on(
                 "disconnect",
@@ -223,21 +199,13 @@ export const initSocket = (server) => {
                         of onlineUsers.entries()
                     ){
 
-
                         if(socketId === socket.id){
 
-
                             onlineUsers.delete(userId);
-
-
-
                             console.log(
                                 "User offline:",
                                 userId
                             );
-
-
-
                             // Notify everyone
                             io.emit(
                                 "userOffline",
@@ -246,31 +214,17 @@ export const initSocket = (server) => {
                                 }
                             );
 
-
                         }
 
-
-                    }
-
-
+    }
                 }
             );
-
-
-
         }
     );
-
-
-
     return io;
 
 
 };
-
-
-
-
 
 export const getIO = () => {
 
@@ -285,20 +239,12 @@ export const getIO = () => {
 
     }
 
-
     return io;
-
 
 };
 
-
-
-
-
 export const getOnlineUsers = () => {
 
-
     return onlineUsers;
-
 
 };

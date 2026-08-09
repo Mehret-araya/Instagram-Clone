@@ -281,6 +281,23 @@ const Explore = () => {
               <p>
                 {user.bio || "No bio yet"}
               </p>
+
+
+              <button
+  onClick={(e) => {
+    e.stopPropagation();
+    navigate(`/messages/${user._id}`);
+  }}
+  style={{
+    marginTop: "8px",
+    padding: "8px 14px",
+    border: "none",
+    borderRadius: "6px",
+    cursor: "pointer",
+  }}
+>
+  Message
+</button>
             </div>
           ))}
         </div>

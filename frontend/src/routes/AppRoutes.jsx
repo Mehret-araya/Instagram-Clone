@@ -50,7 +50,7 @@ const AppRoutes = () => {
       />
 
       <Route
-        path="/messages"
+        path="/messages/:userId"
         element={
           <ProtectedRoute>
             <Messages />
