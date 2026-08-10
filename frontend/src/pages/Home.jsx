@@ -1,7 +1,12 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../services/api";
+import { AuthContext } from "../context/AuthContext";
 
 const Home = () => {
+  const navigate = useNavigate();
+  const { user } = useContext(AuthContext);
+  console.log("Current logged-in user:", user);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -33,37 +38,60 @@ const Home = () => {
     }
   };
 
+
 const handleLike = async (postId) => {
   try {
+    if (!user?._id) {
+      console.error("User is not logged in");
+      return;
+    }
 
     const post = posts.find(
       (post) => post._id === postId
     );
 
-    const alreadyLiked = post.likes.length > 0;
+    if (!post) {
+      return;
+    }
 
+    const alreadyLiked = post.likes?.some(
+      (like) =>
+        like?._id === user._id ||
+        like === user._id
+    );
 
     if (alreadyLiked) {
+      const response = await api.delete(
+        `/likes/${postId}`
+      );
 
-      await api.delete(`/likes/${postId}`);
-
+      console.log(
+        "Unlike response:",
+        response.data
+      );
 
       setPosts((previousPosts) =>
         previousPosts.map((post) =>
           post._id === postId
             ? {
                 ...post,
-                likes: [],
+                likes: post.likes.filter(
+                  (like) =>
+                    (like?._id || like) !== user._id
+                ),
               }
             : post
         )
       );
-
-
     } else {
+      const response = await api.post(
+        `/likes/${postId}`
+      );
 
-      await api.post(`/likes/${postId}`);
-
+      console.log(
+        "Like response:",
+        response.data
+      );
 
       setPosts((previousPosts) =>
         previousPosts.map((post) =>
@@ -71,27 +99,21 @@ const handleLike = async (postId) => {
             ? {
                 ...post,
                 likes: [
-                  ...post.likes,
-                  "liked",
+                  ...(post.likes || []),
+                  user._id,
                 ],
               }
             : post
         )
       );
-
     }
-
-
   } catch (error) {
-
     console.error(
-      "Like error:",
+      "Like/Unlike error:",
       error.response?.data || error.message
     );
-
   }
 };
-
 
 
 const handleComment = async (postId) => {
@@ -325,20 +347,47 @@ const handleSave = async (postId) => {
 
 <div>
 
-{
-post.comments?.map((comment,index)=>(
-  
 
-<p key={index}>
-  <strong>
-    {comment.user?.username || "User"}
-  </strong>
-  {" "}
-  {comment.text}
-</p>
+{post.comments?.map((comment) => (
+  <div
+    key={comment._id}
+    style={{
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginTop: "10px",
+      padding: "8px",
+      borderBottom: "1px solid #eee",
+    }}
+  >
+    <div>
+      <strong>
+        {comment.user?.username || "User"}
+      </strong>
 
-))
-}
+      <p style={{ margin: "4px 0" }}>
+        {comment.text}
+      </p>
+    </div>
+
+    <button
+      onClick={() =>
+        handleDeleteComment(
+          post._id,
+          comment._id
+        )
+      }
+      style={{
+        border: "none",
+        background: "transparent",
+        color: "red",
+        cursor: "pointer",
+      }}
+    >
+      Delete
+    </button>
+  </div>
+))}
 
 </div>
 

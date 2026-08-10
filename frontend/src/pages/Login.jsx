@@ -21,6 +21,7 @@ const Login = () => {
         email,
         password,
       });
+      console.log("LOGIN RESPONSE:", response.data);
 
       // Save JWT token
       if (response.data.token) {

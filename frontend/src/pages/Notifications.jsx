@@ -18,7 +18,6 @@ const Notifications = () => {
       setNotifications(
         response.data.notifications || []
       );
-
     } catch (error) {
       console.error(
         "Notification error:",
@@ -32,6 +31,30 @@ const Notifications = () => {
   useEffect(() => {
     fetchNotifications();
   }, []);
+
+  const handleMarkAsRead = async (notificationId) => {
+    try {
+      await api.put(
+        `/notifications/${notificationId}/read`
+      );
+
+      setNotifications((previous) =>
+        previous.map((notification) =>
+          notification._id === notificationId
+            ? {
+                ...notification,
+                isRead: true,
+              }
+            : notification
+        )
+      );
+    } catch (error) {
+      console.error(
+        "Mark notification error:",
+        error.response?.data || error.message
+      );
+    }
+  };
 
   if (loading) {
     return <h2>Loading notifications...</h2>;
@@ -50,67 +73,56 @@ const Notifications = () => {
       {notifications.length === 0 ? (
         <p>No notifications yet.</p>
       ) : (
-        
-notifications.map((notification) => (
-  <div
-    key={notification._id}
-    onClick={async () => {
-      try {
-        await api.put(
-          `/notifications/${notification._id}/read`
-        );
+        notifications.map((notification) => (
+          <div
+            key={notification._id}
+            onClick={() =>
+              handleMarkAsRead(notification._id)
+            }
+            style={{
+              border: "1px solid #ddd",
+              borderRadius: "8px",
+              padding: "12px",
+              marginBottom: "10px",
+              cursor: "pointer",
+              backgroundColor:
+                notification.isRead
+                  ? "#fff"
+                  : "#f0f8ff",
+            }}
+          >
+            <strong>
+              {notification.sender?.username ||
+                "Someone"}
+            </strong>
 
-        setNotifications((prev) =>
-          prev.map((item) =>
-            item._id === notification._id
-              ? { ...item, isRead: true }
-              : item
-          )
-        );
-      } catch (error) {
-        console.error(
-          "Mark notification error:",
-          error.response?.data ||
-            error.message
-        );
-      }
-    }}
-    style={{
-      border: "1px solid #ddd",
-      borderRadius: "8px",
-      padding: "12px",
-      marginBottom: "10px",
-      cursor: "pointer",
-      backgroundColor: notification.isRead
-        ? "#fff"
-        : "#f0f8ff",
-    }}
-  >
-    <strong>
-      {notification.sender?.username ||
-        "Someone"}
-    </strong>
+            <p>
+              {notification.message}
+            </p>
 
-    <p>
-      {notification.message}
-    </p>
+            <small>
+              {new Date(
+                notification.createdAt
+              ).toLocaleString()}
+            </small>
 
-    <small>
-      {new Date(
-        notification.createdAt
-      ).toLocaleString()}
-    </small>
+            {!notification.isRead && (
+              <small
+                style={{
+                  display: "block",
+                  marginTop: "5px",
+                  fontWeight: "bold",
+                }}
+              >
+                New
+              </small>
+            )}
+          </div>
+        ))
+      )}
+    </div>
+  );
+};
 
-    {!notification.isRead && (
-      <small
-        style={{
-          display: "block",
-          marginTop: "5px",
-        }}
-      >
-        New
-      </small>
-    )}
-  </div>
-))
+export default Notifications;
 
