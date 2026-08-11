@@ -12,8 +12,14 @@ export const likePost = async (req, res) => {
       });
     }
 
+    const currentUserId = req.user._id.toString();
+
     // Check if user already liked
-    if (post.likes.includes(req.user._id)) {
+    if (
+      post.likes.some(
+        (like) => like.toString() === currentUserId
+      )
+    ) {
       return res.status(400).json({
         message: "Post already liked",
       });
@@ -70,8 +76,14 @@ export const unlikePost = async (req, res) => {
       });
     }
 
+    const currentUserId = req.user._id.toString();
+
     // Check if user has liked the post
-    if (!post.likes.includes(req.user._id)) {
+    if (
+      !post.likes.some(
+        (like) => like.toString() === currentUserId
+      )
+    ) {
       return res.status(400).json({
         message: "You have not liked this post",
       });
@@ -79,7 +91,7 @@ export const unlikePost = async (req, res) => {
 
     // Remove the user's like
     post.likes = post.likes.filter(
-      (userId) => userId.toString() !== req.user._id.toString()
+      (like) => like.toString() !== currentUserId
     );
 
     await post.save();

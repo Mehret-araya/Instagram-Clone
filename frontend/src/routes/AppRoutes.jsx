@@ -4,6 +4,7 @@ import Home from "../pages/Home";
 import Login from "../pages/Login";
 import Register from "../pages/Register";
 import Profile from "../pages/Profile";
+import EditProfile from "../pages/EditProfile";
 import Explore from "../pages/Explore";
 import Messages from "../pages/Messages";
 import Notifications from "../pages/Notifications";
@@ -39,6 +40,14 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
+      <Route
+  path="/edit-profile"
+  element={
+    <ProtectedRoute>
+      <EditProfile />
+    </ProtectedRoute>
+  }
+/>
 
       <Route
         path="/explore"

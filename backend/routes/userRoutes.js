@@ -1,17 +1,19 @@
 import express from "express";
+
 import authMiddleware from "../middleware/authMiddleware.js";
+import profileUpload from "../middleware/profileUploadMiddleware.js";
 
 import {
   getUserProfile,
   updateProfile,
-  getUserProfileWithPosts
+  getUserProfileWithPosts,
 } from "../controllers/userController.js";
-
 
 const router = express.Router();
 
-
-// Get basic user profile
+// ========================================
+// GET BASIC USER PROFILE
+// ========================================
 router.get(
   "/:id",
   authMiddleware,
@@ -19,20 +21,26 @@ router.get(
 );
 
 
-// Update user profile (bio, website)
+// ========================================
+// UPDATE USER PROFILE
+// Bio + Website + Profile Picture
+// ========================================
 router.put(
   "/profile",
   authMiddleware,
+  profileUpload.single("profilePicture"),
   updateProfile
 );
 
 
-// Get user profile with posts
+// ========================================
+// GET USER PROFILE WITH POSTS
+// ========================================
 router.get(
   "/profile/:id",
   authMiddleware,
   getUserProfileWithPosts
 );
 
-
 export default router;
+

@@ -38,84 +38,104 @@ const Home = () => {
     }
   };
 
+const getCurrentUserId = () => {
+  return user?._id || user?.id;
+};
+
+const normalizeLikeId = (like) => {
+  if (!like) return null;
+  if (typeof like === "string") return like;
+  if (like._id) return like._id.toString();
+  if (like.id) return like.id.toString();
+  if (typeof like.toString === "function") return like.toString();
+  return null;
+};
 
 const handleLike = async (postId) => {
+  console.log("LIKE BUTTON CLICKED:", postId);
+
   try {
-    if (!user?._id) {
+    const currentUserId = getCurrentUserId();
+
+    if (!currentUserId) {
       console.error("User is not logged in");
       return;
     }
 
-    const post = posts.find(
-      (post) => post._id === postId
-    );
+    const post = posts.find((post) => post._id === postId);
+
+    console.log("POST:", post);
+    console.log("CURRENT USER:", user);
 
     if (!post) {
+      console.error("Post not found");
       return;
     }
 
     const alreadyLiked = post.likes?.some(
-      (like) =>
-        like?._id === user._id ||
-        like === user._id
+      (like) => normalizeLikeId(like) === currentUserId.toString()
     );
 
-    if (alreadyLiked) {
-      const response = await api.delete(
-        `/likes/${postId}`
-      );
+    console.log("ALREADY LIKED:", alreadyLiked);
 
-      console.log(
-        "Unlike response:",
-        response.data
-      );
+    if (alreadyLiked) {
+      const response = await api.delete(`/likes/${postId}`);
+
+      console.log("UNLIKE SUCCESS:", response.data);
 
       setPosts((previousPosts) =>
-        previousPosts.map((post) =>
-          post._id === postId
-            ? {
-                ...post,
-                likes: post.likes.filter(
-                  (like) =>
-                    (like?._id || like) !== user._id
-                ),
+        previousPosts.map((p) =>
+          p._id !== postId
+            ? p
+            : {
+                ...p,
+                likes: p.likes?.filter(
+                  (like) => normalizeLikeId(like) !== currentUserId.toString()
+                ) || [],
               }
-            : post
         )
       );
     } else {
-      const response = await api.post(
-        `/likes/${postId}`
-      );
+      const response = await api.post(`/likes/${postId}`);
 
-      console.log(
-        "Like response:",
-        response.data
-      );
+      console.log("LIKE SUCCESS:", response.data);
 
       setPosts((previousPosts) =>
-        previousPosts.map((post) =>
-          post._id === postId
-            ? {
-                ...post,
+        previousPosts.map((p) =>
+          p._id !== postId
+            ? p
+            : {
+                ...p,
                 likes: [
-                  ...(post.likes || []),
-                  user._id,
+                  ...(p.likes ?? []),
+                  currentUserId,
                 ],
               }
-            : post
         )
       );
     }
+
+    await fetchPosts();
+
   } catch (error) {
     console.error(
-      "Like/Unlike error:",
-      error.response?.data || error.message
+      "LIKE ERROR STATUS:",
+      error.response?.status
+    );
+
+    console.error(
+      "LIKE ERROR DATA:",
+      error.response?.data
+    );
+
+    console.error(
+      "LIKE ERROR MESSAGE:",
+      error.message
     );
   }
 };
-
-
+             
+  
 const handleComment = async (postId) => {
   try {
 
@@ -273,39 +293,47 @@ const handleSave = async (postId) => {
                 {post.caption}
               </p>
 
+              {(() => {
+                const currentUserId = user?._id || user?.id;
+                const isLikedByCurrentUser = post.likes?.some(
+                  (like) => like?.toString() === currentUserId?.toString()
+                );
+
+                return (
+                  <button
+                    onClick={() => handleLike(post._id)}
+                    style={{
+                      padding: "8px 15px",
+                      border: "none",
+                      borderRadius: "5px",
+                      backgroundColor: isLikedByCurrentUser
+                        ? "#e0245e"
+                        : "#0095f6",
+                      color: "white",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {isLikedByCurrentUser ? "💔 Unlike" : "❤️ Like"}
+                  </button>
+                );
+              })()}
 
               <button
-                onClick={() => handleLike(post._id)}
+                onClick={() => handleSave(post._id)}
                 style={{
-                  padding:"8px 15px",
-                  border:"none",
-                  borderRadius:"5px",
-                  backgroundColor:"#0095f6",
-                  color:"white",
-                  cursor:"pointer",
+                  padding: "8px 15px",
+                  border: "none",
+                  borderRadius: "5px",
+                  backgroundColor: "#555",
+                  color: "white",
+                  cursor: "pointer",
+                  marginLeft: "10px",
                 }}
               >
-                ❤️ Like
+                {savedPosts.includes(post._id)
+                  ? "🔖 Saved"
+                  : "🔖 Save"}
               </button>
-
-
-              <button
-  onClick={() => handleSave(post._id)}
-  style={{
-    padding: "8px 15px",
-    border: "none",
-    borderRadius: "5px",
-    backgroundColor: "#555",
-    color: "white",
-    cursor: "pointer",
-    marginLeft: "10px",
-  }}
->
-  {savedPosts.includes(post._id)
-    ? "🔖 Saved"
-    : "🔖 Save"}
-</button>
-
 
               <p>
                 {post.likes?.length || 0} Likes

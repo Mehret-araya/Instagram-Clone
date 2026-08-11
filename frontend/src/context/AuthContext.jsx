@@ -1,4 +1,3 @@
-
 import {
   createContext,
   useEffect,
@@ -9,20 +8,35 @@ export const AuthContext = createContext();
 
 const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
-    const savedUser =
-      localStorage.getItem("user");
+    const savedUser = localStorage.getItem("user");
 
-    return savedUser
-      ? JSON.parse(savedUser)
-      : null;
+    if (!savedUser) {
+      return null;
+    }
+
+    const parsedUser = JSON.parse(savedUser);
+
+    const normalizedUser = {
+      ...parsedUser,
+      _id: parsedUser._id || parsedUser.id,
+      id: parsedUser.id || parsedUser._id,
+    };
+
+    return normalizedUser;
   });
 
   const login = (userData) => {
-    setUser(userData);
+    const normalizedUser = {
+      ...userData,
+      _id: userData._id || userData.id,
+      id: userData.id || userData._id,
+    };
+
+    setUser(normalizedUser);
 
     localStorage.setItem(
       "user",
-      JSON.stringify(userData)
+      JSON.stringify(normalizedUser)
     );
   };
 
