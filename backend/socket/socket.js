@@ -114,74 +114,90 @@ socket.on(
 
 
 // Send real-time message
-socket.on(
-    "sendMessage",
-    async (data) => {
 
-        try {
-
-            const {
-                receiver,
-                text
-            } = data;
-
-            const sender =
-                socket.user._id;
-
-            // Save message
-            const message =
-                await Message.create({
-
-                    sender,
-
-                    receiver,
-
-                    text
-
-                });
-
-            await Notification.create({
-
-                receiver,
-
-                sender,
-
-                type: "message",
-
-                message:
-                    "You received a new message"
-
+socket.on("sendMessage", async (data) => {
+    try {
+        if (!data || typeof data !== "object") {
+            socket.emit("messageError", {
+                message: "Invalid message data",
             });
-
-            // Find receiver socket
-            const receiverSocket =
-                onlineUsers.get(
-                    receiver.toString()
-                );
-
-            // Send instantly
-            if (receiverSocket) {
-
-                io.to(receiverSocket)
-                    .emit(
-                        "receiveMessage",
-                        message
-                    );
-
-            }
-
-        } catch (error) {
-
-            console.log(
-                error.message
-            );
-
+            return;
         }
 
-    }
-);
+        const { receiver, text } = data;
 
-            // Typing indicator
+        if (
+            typeof receiver !== "string" ||
+            !/^[a-f\d]{24}$/i.test(receiver)
+        ) {
+            socket.emit("messageError", {
+                message: "Invalid message recipient",
+            });
+            return;
+        }
+
+        if (typeof text !== "string" || !text.trim()) {
+            socket.emit("messageError", {
+                message: "Message text is required",
+            });
+            return;
+        }
+
+        const trimmedText = text.trim();
+
+        if (trimmedText.length > 1000) {
+            socket.emit("messageError", {
+                message: "Message cannot exceed 1000 characters",
+            });
+            return;
+        }
+
+        const sender = socket.user._id;
+
+        if (receiver === sender.toString()) {
+            socket.emit("messageError", {
+                message: "You cannot message yourself",
+            });
+            return;
+        }
+
+        const recipient = await User.findById(receiver).select("_id");
+
+        if (!recipient) {
+            socket.emit("messageError", {
+                message: "Message recipient not found",
+            });
+            return;
+        }
+
+        const message = await Message.create({
+            sender,
+            receiver: recipient._id,
+            text: trimmedText,
+        });
+
+        await Notification.create({
+            receiver: recipient._id,
+            sender,
+            type: "message",
+            message: "You received a new message",
+        });
+
+        const receiverSocket = onlineUsers.get(
+            recipient._id.toString()
+        );
+
+        if (receiverSocket) {
+            io.to(receiverSocket).emit("receiveMessage", message);
+        }
+    } catch (error) {
+        console.error("SOCKET SEND MESSAGE ERROR:", error.message);
+
+        socket.emit("messageError", {
+            message: "Unable to send message. Please try again.",
+        });
+    }
+});
 
                     // Typing indicator
 socket.on(
