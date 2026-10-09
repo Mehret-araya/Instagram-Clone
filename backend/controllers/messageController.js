@@ -7,19 +7,44 @@ export const sendMessage = async (req, res, next) => {
   try {
     const { receiver, text } = req.body;
 
-    if (!receiver || !text || !text.trim()) {
+    // Validate receiver ID
+    if (
+      typeof receiver !== "string" ||
+      !/^[a-f\d]{24}$/i.test(receiver)
+    ) {
       return res.status(400).json({
-        message: "Receiver and message text are required",
+        message: "A valid receiver ID is required",
       });
     }
 
-    if (receiver === req.user._id.toString()) {
+    // Normalize receiver ID
+    const receiverId = receiver.toLowerCase();
+
+    // Validate message text
+    if (typeof text !== "string" || !text.trim()) {
+      return res.status(400).json({
+        message: "Message text is required",
+      });
+    }
+
+    const trimmedText = text.trim();
+
+    // Limit message length
+    if (trimmedText.length > 1000) {
+      return res.status(400).json({
+        message: "Message cannot exceed 1000 characters",
+      });
+    }
+
+    // Prevent sending messages to yourself
+    if (receiverId === req.user._id.toString()) {
       return res.status(400).json({
         message: "You cannot send a message to yourself",
       });
     }
 
-    const recipient = await User.findById(receiver);
+    // Check that the recipient exists
+    const recipient = await User.findById(receiverId);
 
     if (!recipient) {
       return res.status(404).json({
@@ -27,13 +52,14 @@ export const sendMessage = async (req, res, next) => {
       });
     }
 
+    // Create message using the authenticated user's ID
     const message = await Message.create({
       sender: req.user._id,
-      receiver,
-      text: text.trim(),
+      receiver: receiverId,
+      text: trimmedText,
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       message: "Message sent successfully",
       data: message,
     });
@@ -48,7 +74,28 @@ export const getMessages = async (req, res, next) => {
   try {
     const { userId } = req.params;
 
-    const otherUser = await User.findById(userId);
+    // Validate conversation user ID
+    if (
+      typeof userId !== "string" ||
+      !/^[a-f\d]{24}$/i.test(userId)
+    ) {
+      return res.status(400).json({
+        message: "A valid conversation user ID is required",
+      });
+    }
+
+    // Normalize conversation user ID
+    const conversationUserId = userId.toLowerCase();
+
+    // Prevent requesting a conversation with yourself
+    if (conversationUserId === req.user._id.toString()) {
+      return res.status(400).json({
+        message: "You cannot open a conversation with yourself",
+      });
+    }
+
+    // Check that the other user exists
+    const otherUser = await User.findById(conversationUserId);
 
     if (!otherUser) {
       return res.status(404).json({
@@ -56,14 +103,16 @@ export const getMessages = async (req, res, next) => {
       });
     }
 
+    // Retrieve only messages between the authenticated user
+    // and the requested conversation user
     const messages = await Message.find({
       $or: [
         {
           sender: req.user._id,
-          receiver: userId,
+          receiver: conversationUserId,
         },
         {
-          sender: userId,
+          sender: conversationUserId,
           receiver: req.user._id,
         },
       ],
@@ -71,7 +120,7 @@ export const getMessages = async (req, res, next) => {
       createdAt: 1,
     });
 
-    res.status(200).json({
+    return res.status(200).json({
       count: messages.length,
       messages,
     });
