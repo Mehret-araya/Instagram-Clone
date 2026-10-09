@@ -10,9 +10,12 @@ const storyStorage = new CloudinaryStorage({
   },
 });
 
+
 const storyUpload = multer({
   storage: storyStorage,
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
 });
-
 export default storyUpload;
 

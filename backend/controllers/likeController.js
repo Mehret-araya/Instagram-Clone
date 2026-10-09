@@ -1,8 +1,9 @@
+
 import Post from "../models/Post.js";
 import Notification from "../models/Notification.js";
 
 // Like Post
-export const likePost = async (req, res) => {
+export const likePost = async (req, res, next) => {
   try {
     const post = await Post.findById(req.params.id);
 
@@ -29,25 +30,16 @@ export const likePost = async (req, res) => {
 
     await post.save();
 
-// Create like notification
-
-if(post.user.toString() !== req.user._id.toString()){
-
-    await Notification.create({
-
+    // Create like notification
+    if (post.user.toString() !== req.user._id.toString()) {
+      await Notification.create({
         receiver: post.user,
-
         sender: req.user._id,
-
-        type:"like",
-
-        post:post._id,
-
-        message:"Someone liked your post"
-
-    });
-
-}
+        type: "like",
+        post: post._id,
+        message: "Someone liked your post",
+      });
+    }
 
     res.status(200).json({
       message: "Post liked successfully",
@@ -56,18 +48,15 @@ if(post.user.toString() !== req.user._id.toString()){
 
   } catch (error) {
 
-    res.status(500).json({
-      message: error.message,
-    });
+    next(error);
 
   }
 };
 
 
 // Unlike Post
-export const unlikePost = async (req, res) => {
+export const unlikePost = async (req, res, next) => {
   try {
-
     const post = await Post.findById(req.params.id);
 
     if (!post) {
@@ -103,9 +92,7 @@ export const unlikePost = async (req, res) => {
 
   } catch (error) {
 
-    res.status(500).json({
-      message: error.message,
-    });
+    next(error);
 
   }
 };

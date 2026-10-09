@@ -1,8 +1,9 @@
+
 import User from "../models/User.js";
 import Post from "../models/Post.js";
 
 // Save Post
-export const savePost = async (req, res) => {
+export const savePost = async (req, res, next) => {
   try {
     const { postId } = req.params;
 
@@ -16,7 +17,13 @@ export const savePost = async (req, res) => {
 
     const user = await User.findById(req.user._id);
 
-    if (user.savedPosts.includes(postId)) {
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    if (user.savedPosts.some((id) => id.toString() === postId)) {
       return res.status(400).json({
         message: "Post already saved",
       });
@@ -32,16 +39,12 @@ export const savePost = async (req, res) => {
     });
   } catch (error) {
     console.error("SAVE POST ERROR:", error);
-
-    res.status(500).json({
-      message: error.message,
-    });
+    next(error);
   }
 };
 
-
 // Unsave Post
-export const unsavePost = async (req, res) => {
+export const unsavePost = async (req, res, next) => {
   try {
     const { postId } = req.params;
 
@@ -53,7 +56,9 @@ export const unsavePost = async (req, res) => {
       });
     }
 
-    if (!user.savedPosts.includes(postId)) {
+    if (
+      !user.savedPosts.some((id) => id.toString() === postId)
+    ) {
       return res.status(400).json({
         message: "Post is not saved",
       });
@@ -71,9 +76,6 @@ export const unsavePost = async (req, res) => {
     });
   } catch (error) {
     console.error("UNSAVE POST ERROR:", error);
-
-    res.status(500).json({
-      message: error.message,
-    });
+    next(error);
   }
 };

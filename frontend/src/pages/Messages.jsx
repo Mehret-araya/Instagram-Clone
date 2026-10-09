@@ -41,9 +41,29 @@ const Messages = () => {
     }
   };
 
-  useEffect(() => {
-  if (user?._id) {
-    socket.emit("join", user._id);
+  
+  
+useEffect(() => {
+  const token = localStorage.getItem("token");
+
+  if (!user?._id || !token) {
+    return;
+  }
+
+  socket.auth = { token };
+
+  if (!socket.connected) {
+    socket.connect();
+  }
+
+  const handleConnect = () => {
+    socket.emit("join");
+  };
+
+  socket.on("connect", handleConnect);
+
+  if (socket.connected) {
+    handleConnect();
   }
 
   if (userId) {
@@ -96,22 +116,10 @@ socket.on(
 
 
 return () => {
-
-  socket.off(
-    "receiveMessage",
-    handleReceiveMessage
-  );
-
-  socket.off(
-    "userTyping",
-    handleUserTyping
-  );
-
-  socket.off(
-    "userStoppedTyping",
-    handleUserStoppedTyping
-  );
-
+  socket.off("connect", handleConnect);
+  socket.off("receiveMessage", handleReceiveMessage);
+  socket.off("userTyping", handleUserTyping);
+  socket.off("userStoppedTyping", handleUserStoppedTyping);
 };
 
 }, [user, userId]);

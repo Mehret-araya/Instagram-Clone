@@ -1,10 +1,11 @@
+
 import User from "../models/User.js";
 import Post from "../models/Post.js";
 
 // ========================================
 // GET USER PROFILE
 // ========================================
-export const getUserProfile = async (req, res) => {
+export const getUserProfile = async (req, res, next) => {
   try {
     const user = await User.findById(req.params.id)
       .select("-password");
@@ -19,16 +20,9 @@ export const getUserProfile = async (req, res) => {
       message: "User profile fetched successfully",
       user,
     });
-
   } catch (error) {
-    console.error(
-      "GET USER PROFILE ERROR:",
-      error
-    );
-
-    res.status(500).json({
-      message: error.message,
-    });
+    console.error("GET USER PROFILE ERROR:", error);
+    next(error);
   }
 };
 
@@ -38,7 +32,8 @@ export const getUserProfile = async (req, res) => {
 // ========================================
 export const getUserProfileWithPosts = async (
   req,
-  res
+  res,
+  next
 ) => {
   try {
     const user = await User.findById(
@@ -58,38 +53,23 @@ export const getUserProfileWithPosts = async (
     });
 
     res.status(200).json({
-      message:
-        "User profile fetched successfully",
+      message: "User profile fetched successfully",
 
       user: {
         id: user._id,
         username: user.username,
-        profilePicture:
-          user.profilePicture,
+        profilePicture: user.profilePicture,
         bio: user.bio,
         website: user.website,
-
         postCount: posts.length,
-
-        followers:
-          user.followers.length,
-
-        following:
-          user.following.length,
-
+        followers: user.followers.length,
+        following: user.following.length,
         posts,
       },
     });
-
   } catch (error) {
-    console.error(
-      "GET PROFILE WITH POSTS ERROR:",
-      error
-    );
-
-    res.status(500).json({
-      message: error.message,
-    });
+    console.error("GET PROFILE WITH POSTS ERROR:", error);
+    next(error);
   }
 };
 
@@ -99,7 +79,8 @@ export const getUserProfileWithPosts = async (
 // ========================================
 export const updateProfile = async (
   req,
-  res
+  res,
+  next
 ) => {
   try {
     const { bio, website } = req.body;
@@ -132,27 +113,18 @@ export const updateProfile = async (
     await user.save();
 
     res.status(200).json({
-      message:
-        "Profile updated successfully",
+      message: "Profile updated successfully",
 
       user: {
         username: user.username,
         bio: user.bio,
         website: user.website,
-        profilePicture:
-          user.profilePicture,
+        profilePicture: user.profilePicture,
       },
     });
-
   } catch (error) {
-    console.error(
-      "UPDATE PROFILE ERROR:",
-      error
-    );
-
-    res.status(500).json({
-      message: error.message,
-    });
+    console.error("UPDATE PROFILE ERROR:", error);
+    next(error);
   }
 };
 

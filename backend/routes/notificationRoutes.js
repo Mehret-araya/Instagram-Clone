@@ -5,7 +5,7 @@ import authMiddleware from "../middleware/authMiddleware.js";
 
 import {
   getNotifications,
-  createNotification,
+
   markAsRead,
 
 } from "../controllers/notificationController.js";
@@ -24,12 +24,6 @@ router.put(
   markAsRead
 );
 
-// Create notification
-router.post(
-  "/",
-  authMiddleware,
-  createNotification
-);
+
 
 export default router;
-

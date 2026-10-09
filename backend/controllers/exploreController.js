@@ -1,88 +1,85 @@
+
 import Post from "../models/Post.js";
 import User from "../models/User.js";
 
 // Get Trending Hashtags
-export const getTrendingHashtags = async (req, res) => {
+export const getTrendingHashtags = async (req, res, next) => {
   try {
-
     const hashtags = await Post.aggregate([
       {
-        $unwind: "$hashtags"
+        $unwind: "$hashtags",
       },
       {
         $group: {
           _id: "$hashtags",
-          count: { $sum: 1 }
-        }
+          count: { $sum: 1 },
+        },
       },
       {
         $sort: {
-          count: -1
-        }
+          count: -1,
+        },
       },
       {
-        $limit: 10
-      }
+        $limit: 10,
+      },
     ]);
 
     res.status(200).json({
       message: "Trending hashtags fetched successfully",
       hashtags,
     });
-
   } catch (error) {
-
-    res.status(500).json({
-      message: error.message,
-    });
-
+    console.error("GET TRENDING HASHTAGS ERROR:", error);
+    next(error);
   }
 };
 
 // Get Recommended Users
-export const getRecommendations = async (req, res) => {
+export const getRecommendations = async (req, res, next) => {
   try {
-
     const currentUser = await User.findById(req.user._id)
       .populate("following");
 
-    const followingIds = currentUser.following.map(
-      user => user._id
-    );
+    if (!currentUser) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
 
+    const followingIds = currentUser.following.map(
+      (user) => user._id
+    );
 
     const recommendations = await User.find({
       _id: {
-        $nin: [
-          ...followingIds,
-          currentUser._id
-        ]
-      }
+        $nin: [...followingIds, currentUser._id],
+      },
     })
       .select("-password")
       .limit(10);
 
-
     res.status(200).json({
       message: "Recommendations fetched successfully",
       count: recommendations.length,
-      users: recommendations
+      users: recommendations,
     });
-
-
   } catch (error) {
-
-    res.status(500).json({
-      message: error.message
-    });
-
+    console.error("GET RECOMMENDATIONS ERROR:", error);
+    next(error);
   }
 };
-// Get Suggested Users
-export const getSuggestedUsers = async (req, res) => {
-  try {
 
+// Get Suggested Users
+export const getSuggestedUsers = async (req, res, next) => {
+  try {
     const currentUser = await User.findById(req.user._id);
+
+    if (!currentUser) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
 
     const suggestedUsers = await User.find({
       _id: {
@@ -100,52 +97,42 @@ export const getSuggestedUsers = async (req, res) => {
       count: suggestedUsers.length,
       users: suggestedUsers,
     });
-
   } catch (error) {
-
-    res.status(500).json({
-      message: error.message,
-    });
-
+    console.error("GET SUGGESTED USERS ERROR:", error);
+    next(error);
   }
 };
-// Get Popular Posts
-export const getPopularPosts = async (req, res) => {
-  try {
 
+// Get Popular Posts
+export const getPopularPosts = async (req, res, next) => {
+  try {
     const posts = await Post.aggregate([
       {
         $addFields: {
           engagement: {
             $add: [
-              { $size: "$likes" },
-              { $size: "$comments" }
-            ]
-          }
-        }
+              { $size: { $ifNull: ["$likes", []] } },
+              { $size: { $ifNull: ["$comments", []] } },
+            ],
+          },
+        },
       },
       {
         $sort: {
-          engagement: -1
-        }
+          engagement: -1,
+        },
       },
       {
-        $limit: 20
-      }
+        $limit: 20,
+      },
     ]);
-
 
     res.status(200).json({
       message: "Popular posts fetched successfully",
-      posts
+      posts,
     });
-
-
   } catch (error) {
-
-    res.status(500).json({
-      message: error.message
-    });
-
+    console.error("GET POPULAR POSTS ERROR:", error);
+    next(error);
   }
 };

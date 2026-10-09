@@ -2,7 +2,7 @@ import Post from "../models/Post.js";
 import cloudinary from "../config/cloudinary.js";
 
 // Create Post
-export const createPost = async (req, res) => {
+export const createPost = async (req, res, next) => {
   try {
 
     console.log("========== CREATE POST REQUEST ==========");
@@ -36,7 +36,7 @@ export const createPost = async (req, res) => {
 
       if (Array.isArray(hashtags)) {
         hashtagArray = hashtags;
-      } 
+      }
       else {
         hashtagArray = hashtags
           .split(",")
@@ -89,16 +89,10 @@ export const createPost = async (req, res) => {
 
   } catch (error) {
 
-
     console.error("========== CREATE POST ERROR ==========");
     console.error(error);
 
-
-    res.status(500).json({
-
-      message: error.message,
-
-    });
+    next(error);
 
   }
 };
@@ -106,37 +100,33 @@ export const createPost = async (req, res) => {
 
 
 
-
 // Get All Posts
-export const getAllPosts = async (req, res) => {
+export const getAllPosts = async (req, res, next) => {
   try {
 
-    
     const posts = await Post.find()
-  .populate("user", "username profilePicture")
-  .populate("comments.user", "username profilePicture")
-  .sort({ createdAt:-1 });
+      .populate("user", "username profilePicture")
+      .populate("comments.user", "username profilePicture")
+      .sort({ createdAt: -1 });
 
 
     res.status(200).json(posts);
 
-  } 
+  }
 
   catch (error) {
 
-  console.error("GET POSTS ERROR:", error);
+    console.error("GET POSTS ERROR:", error);
 
-  res.status(500).json({
-    message: error.message,
-  });
+    next(error);
 
-}
+  }
 };
 
 
 
 // Get Single Post
-export const getPostById = async (req, res) => {
+export const getPostById = async (req, res, next) => {
   try {
 
     const post = await Post.findById(req.params.id)
@@ -155,14 +145,14 @@ export const getPostById = async (req, res) => {
 
   } catch (error) {
 
-    res.status(500).json({
-      message: error.message,
-    });
+    next(error);
 
   }
 };
+
+
 // Update Post
-export const updatePost = async (req, res) => {
+export const updatePost = async (req, res, next) => {
   try {
     const { caption, hashtags } = req.body;
 
@@ -198,14 +188,15 @@ export const updatePost = async (req, res) => {
       post,
     });
   } catch (error) {
-    res.status(500).json({
-      message: error.message,
-    });
+
+    next(error);
+
   }
 };
 
+
 // Delete Post
-export const deletePost = async (req, res) => {
+export const deletePost = async (req, res, next) => {
   try {
 
     const post = await Post.findById(req.params.id);
@@ -245,9 +236,7 @@ export const deletePost = async (req, res) => {
 
   } catch (error) {
 
-    res.status(500).json({
-      message: error.message,
-    });
+    next(error);
 
   }
 };

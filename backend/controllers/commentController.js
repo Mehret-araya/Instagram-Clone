@@ -1,10 +1,12 @@
+
 import Post from "../models/Post.js";
 import Notification from "../models/Notification.js";
 
 // ========================================
 // ADD COMMENT
 // ========================================
-export const addComment = async (req, res) => {
+export const addComment = async (req, res, next) => {
+
   try {
     const { text } = req.body;
 
@@ -45,12 +47,13 @@ export const addComment = async (req, res) => {
       message: "Comment added successfully",
       comments: post.comments,
     });
+
   } catch (error) {
+
     console.error("ADD COMMENT ERROR:", error);
 
-    res.status(500).json({
-      message: error.message,
-    });
+    next(error);
+
   }
 };
 
@@ -58,7 +61,8 @@ export const addComment = async (req, res) => {
 // ========================================
 // DELETE COMMENT
 // ========================================
-export const deleteComment = async (req, res) => {
+export const deleteComment = async (req, res, next) => {
+
   try {
     const { postId, commentId } = req.params;
 
@@ -93,12 +97,13 @@ export const deleteComment = async (req, res) => {
       message: "Comment deleted successfully",
       comments: post.comments,
     });
+
   } catch (error) {
+
     console.error("DELETE COMMENT ERROR:", error);
 
-    res.status(500).json({
-      message: error.message,
-    });
+    next(error);
+
   }
 };
 
@@ -106,7 +111,8 @@ export const deleteComment = async (req, res) => {
 // ========================================
 // ADD REPLY
 // ========================================
-export const addReply = async (req, res) => {
+export const addReply = async (req, res, next) => {
+
   try {
     const { postId, commentId } = req.params;
     const { text } = req.body;
@@ -156,12 +162,13 @@ export const addReply = async (req, res) => {
       message: "Reply added successfully",
       replies: comment.replies,
     });
+
   } catch (error) {
+
     console.error("ADD REPLY ERROR:", error);
 
-    res.status(500).json({
-      message: error.message,
-    });
+    next(error);
+
   }
 };
 
