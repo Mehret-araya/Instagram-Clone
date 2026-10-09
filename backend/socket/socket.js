@@ -198,64 +198,62 @@ socket.on("sendMessage", async (data) => {
         });
     }
 });
-
                     // Typing indicator
-socket.on(
-    "typing",
-    (data) => {
+        
 
-        const senderId =
-            socket.user._id.toString();
+socket.on("typing", (data) => {
+    const receiverId = data?.receiverId;
 
-        const receiverSocket =
-            onlineUsers.get(
-                data.receiverId.toString()
-            );
-
-        if (receiverSocket) {
-
-            io.to(receiverSocket)
-                .emit(
-                    "userTyping",
-                    {
-                        senderId
-                    }
-                );
-
-        }
-
+    if (
+        typeof receiverId !== "string" ||
+        !/^[a-f\d]{24}$/i.test(receiverId)
+    ) {
+        return;
     }
-);
-            // Stop typing indicator
 
-// Stop typing indicator
-socket.on(
-    "stopTyping",
-    (data) => {
+    const senderId = socket.user._id.toString();
 
-        const senderId =
-            socket.user._id.toString();
-
-        const receiverSocket =
-            onlineUsers.get(
-                data.receiverId.toString()
-            );
-
-        if (receiverSocket) {
-
-            io.to(receiverSocket)
-                .emit(
-                    "userStoppedTyping",
-                    {
-                        senderId
-                    }
-                );
-
-        }
-
+    if (receiverId === senderId) {
+        return;
     }
-);
-            // User disconnects
+
+    const receiverSocket = onlineUsers.get(receiverId);
+
+    if (receiverSocket) {
+        io.to(receiverSocket).emit("userTyping", {
+            senderId,
+        });
+    }
+});
+
+
+    
+// stop typing indicator
+socket.on("stopTyping", (data) => {
+    const receiverId = data?.receiverId;
+
+    if (
+        typeof receiverId !== "string" ||
+        !/^[a-f\d]{24}$/i.test(receiverId)
+    ) {
+        return;
+    }
+
+    const senderId = socket.user._id.toString();
+
+    if (receiverId === senderId) {
+        return;
+    }
+
+    const receiverSocket = onlineUsers.get(receiverId);
+
+    if (receiverSocket) {
+        io.to(receiverSocket).emit("userStoppedTyping", {
+            senderId,
+        });
+    }
+});
+// User disconnects
             socket.on(
                 "disconnect",
                 () => {
