@@ -6,8 +6,6 @@ import User from "../models/User.js";
 
 let io;
 
-const onlineUsers = new Map();
-
 export const initSocket = (server) => {
     io = new Server(server, {
         cors: {
@@ -16,7 +14,7 @@ export const initSocket = (server) => {
         },
     });
 
-    // Socket authentication
+    // Authenticate every Socket.IO connection.
     io.use(async (socket, next) => {
         try {
             const token = socket.handshake.auth?.token;
@@ -49,7 +47,6 @@ export const initSocket = (server) => {
             }
 
             socket.user = user;
-
             next();
         } catch (error) {
             next(new Error("Invalid or expired token"));
@@ -59,18 +56,30 @@ export const initSocket = (server) => {
     io.on("connection", (socket) => {
         console.log("User connected:", socket.id);
 
-        // User joins
-        socket.on("join", () => {
-            const userId = socket.user._id.toString();
+        // Join the authenticated user's personal room.
+        socket.on("join", async () => {
+            try {
+                const userId = socket.user._id.toString();
 
-            onlineUsers.set(userId, socket.id);
+                const existingSockets = await io
+                    .in(userId)
+                    .fetchSockets();
 
-            console.log("User online:", userId);
+                const wasOnline = existingSockets.length > 0;
 
-            io.emit("userOnline", { userId });
+                await socket.join(userId);
+
+                console.log("User joined personal room:", userId);
+
+                if (!wasOnline) {
+                    io.emit("userOnline", { userId });
+                }
+            } catch (error) {
+                console.error("SOCKET JOIN ERROR:", error.message);
+            }
         });
 
-        // Send real-time message
+        // Send a real-time message.
         socket.on("sendMessage", async (data) => {
             try {
                 if (
@@ -86,7 +95,6 @@ export const initSocket = (server) => {
 
                 const { receiver, text } = data;
 
-                // Validate recipient ID
                 if (
                     typeof receiver !== "string" ||
                     !/^[a-f\d]{24}$/i.test(receiver)
@@ -97,10 +105,8 @@ export const initSocket = (server) => {
                     return;
                 }
 
-                // Normalize recipient ID
                 const receiverId = receiver.toLowerCase();
 
-                // Validate message text
                 if (
                     typeof text !== "string" ||
                     !text.trim()
@@ -120,10 +126,9 @@ export const initSocket = (server) => {
                     return;
                 }
 
-                // Always use the authenticated user's ID
+                // The sender is always taken from the authenticated socket.
                 const sender = socket.user._id;
 
-                // Prevent messaging yourself
                 if (receiverId === sender.toString()) {
                     socket.emit("messageError", {
                         message: "You cannot message yourself",
@@ -131,7 +136,6 @@ export const initSocket = (server) => {
                     return;
                 }
 
-                // Check that the recipient exists
                 const recipient = await User.findById(
                     receiverId
                 ).select("_id");
@@ -143,14 +147,14 @@ export const initSocket = (server) => {
                     return;
                 }
 
-                // Save the message
+                // Save the message.
                 const message = await Message.create({
                     sender,
                     receiver: recipient._id,
                     text: trimmedText,
                 });
 
-                // Create notification
+                // Create the existing message notification.
                 await Notification.create({
                     receiver: recipient._id,
                     sender,
@@ -158,17 +162,11 @@ export const initSocket = (server) => {
                     message: "You received a new message",
                 });
 
-                // Deliver to the recipient if online
-                const receiverSocket = onlineUsers.get(
-                    recipient._id.toString()
+                // Deliver to every active tab in the recipient's room.
+                io.to(recipient._id.toString()).emit(
+                    "receiveMessage",
+                    message
                 );
-
-                if (receiverSocket) {
-                    io.to(receiverSocket).emit(
-                        "receiveMessage",
-                        message
-                    );
-                }
             } catch (error) {
                 console.error(
                     "SOCKET SEND MESSAGE ERROR:",
@@ -181,7 +179,7 @@ export const initSocket = (server) => {
             }
         });
 
-        // Typing indicator
+        // Notify all recipient tabs when the sender is typing.
         socket.on("typing", (data) => {
             const receiverId = data?.receiverId;
 
@@ -195,23 +193,16 @@ export const initSocket = (server) => {
             const normalizedReceiverId = receiverId.toLowerCase();
             const senderId = socket.user._id.toString();
 
-            // Do not send typing events to yourself
             if (normalizedReceiverId === senderId) {
                 return;
             }
 
-            const receiverSocket = onlineUsers.get(
-                normalizedReceiverId
-            );
-
-            if (receiverSocket) {
-                io.to(receiverSocket).emit("userTyping", {
-                    senderId,
-                });
-            }
+            socket.to(normalizedReceiverId).emit("userTyping", {
+                senderId,
+            });
         });
 
-        // Stop typing indicator
+        // Notify all recipient tabs when typing stops.
         socket.on("stopTyping", (data) => {
             const receiverId = data?.receiverId;
 
@@ -225,32 +216,34 @@ export const initSocket = (server) => {
             const normalizedReceiverId = receiverId.toLowerCase();
             const senderId = socket.user._id.toString();
 
-            // Do not send stop-typing events to yourself
             if (normalizedReceiverId === senderId) {
                 return;
             }
 
-            const receiverSocket = onlineUsers.get(
-                normalizedReceiverId
-            );
-
-            if (receiverSocket) {
-                io.to(receiverSocket).emit("userStoppedTyping", {
-                    senderId,
-                });
-            }
+            socket.to(normalizedReceiverId).emit("userStoppedTyping", {
+                senderId,
+            });
         });
 
-        // User disconnects
-        socket.on("disconnect", () => {
-            for (const [userId, socketId] of onlineUsers.entries()) {
-                if (socketId === socket.id) {
-                    onlineUsers.delete(userId);
+        // Mark the user offline only after their last connection disconnects.
+        socket.on("disconnect", async () => {
+            try {
+                const userId = socket.user._id.toString();
 
+                // Socket.IO removes the disconnecting socket from its rooms.
+                const remainingSockets = await io
+                    .in(userId)
+                    .fetchSockets();
+
+                if (remainingSockets.length === 0) {
                     console.log("User offline:", userId);
-
                     io.emit("userOffline", { userId });
                 }
+            } catch (error) {
+                console.error(
+                    "SOCKET DISCONNECT ERROR:",
+                    error.message
+                );
             }
         });
     });
@@ -264,8 +257,4 @@ export const getIO = () => {
     }
 
     return io;
-};
-
-export const getOnlineUsers = () => {
-    return onlineUsers;
 };
