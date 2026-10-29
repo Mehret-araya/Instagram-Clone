@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { AuthContext } from "../context/AuthContext";
@@ -12,6 +12,9 @@ const Home = () => {
   const [error, setError] = useState("");
   const [commentText, setCommentText] = useState({});
   const [savedPosts, setSavedPosts] = useState([]);
+  const [pendingLikes, setPendingLikes] = useState({});
+  const [likeErrors, setLikeErrors] = useState({});
+  const pendingLikeIds = useRef(new Set());
 
   useEffect(() => {
     fetchPosts();
@@ -52,86 +55,59 @@ const normalizeLikeId = (like) => {
 };
 
 const handleLike = async (postId) => {
-  console.log("LIKE BUTTON CLICKED:", postId);
+  if (pendingLikeIds.current.has(postId)) {
+    return;
+  }
+
+  const currentUserId = getCurrentUserId();
+  const post = posts.find((item) => item._id === postId);
+
+  if (!currentUserId || !post) {
+    setLikeErrors((previous) => ({
+      ...previous,
+      [postId]: !currentUserId
+        ? "Please log in to like posts."
+        : "This post could not be found.",
+    }));
+    return;
+  }
+
+  const alreadyLiked = post.likes?.some(
+    (like) => normalizeLikeId(like) === currentUserId.toString()
+  );
+
+  pendingLikeIds.current.add(postId);
+  setPendingLikes((previous) => ({ ...previous, [postId]: true }));
+  setLikeErrors((previous) => ({ ...previous, [postId]: "" }));
 
   try {
-    const currentUserId = getCurrentUserId();
+    const response = alreadyLiked
+      ? await api.delete(`/likes/${postId}`)
+      : await api.post(`/likes/${postId}`);
 
-    if (!currentUserId) {
-      console.error("User is not logged in");
-      return;
+    if (!Array.isArray(response.data.likes)) {
+      throw new Error("The server returned an invalid likes response.");
     }
 
-    const post = posts.find((post) => post._id === postId);
-
-    console.log("POST:", post);
-    console.log("CURRENT USER:", user);
-
-    if (!post) {
-      console.error("Post not found");
-      return;
-    }
-
-    const alreadyLiked = post.likes?.some(
-      (like) => normalizeLikeId(like) === currentUserId.toString()
+    setPosts((previousPosts) =>
+      previousPosts.map((item) =>
+        item._id === postId
+          ? { ...item, likes: response.data.likes }
+          : item
+      )
     );
-
-    console.log("ALREADY LIKED:", alreadyLiked);
-
-    if (alreadyLiked) {
-      const response = await api.delete(`/likes/${postId}`);
-
-      console.log("UNLIKE SUCCESS:", response.data);
-
-      setPosts((previousPosts) =>
-        previousPosts.map((p) =>
-          p._id !== postId
-            ? p
-            : {
-                ...p,
-                likes: p.likes?.filter(
-                  (like) => normalizeLikeId(like) !== currentUserId.toString()
-                ) || [],
-              }
-        )
-      );
-    } else {
-      const response = await api.post(`/likes/${postId}`);
-
-      console.log("LIKE SUCCESS:", response.data);
-
-      setPosts((previousPosts) =>
-        previousPosts.map((p) =>
-          p._id !== postId
-            ? p
-            : {
-                ...p,
-                likes: [
-                  ...(p.likes ?? []),
-                  currentUserId,
-                ],
-              }
-        )
-      );
-    }
-
-    await fetchPosts();
-
   } catch (error) {
-    console.error(
-      "LIKE ERROR STATUS:",
-      error.response?.status
-    );
-
-    console.error(
-      "LIKE ERROR DATA:",
-      error.response?.data
-    );
-
-    console.error(
-      "LIKE ERROR MESSAGE:",
-      error.message
-    );
+    console.error("Failed to update post like:", error.response?.data || error);
+    setLikeErrors((previous) => ({
+      ...previous,
+      [postId]:
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to update like. Please try again.",
+    }));
+  } finally {
+    pendingLikeIds.current.delete(postId);
+    setPendingLikes((previous) => ({ ...previous, [postId]: false }));
   }
 };
              
@@ -296,12 +272,13 @@ const handleSave = async (postId) => {
               {(() => {
                 const currentUserId = user?._id || user?.id;
                 const isLikedByCurrentUser = post.likes?.some(
-                  (like) => like?.toString() === currentUserId?.toString()
+                  (like) => normalizeLikeId(like) === currentUserId?.toString()
                 );
 
                 return (
                   <button
                     onClick={() => handleLike(post._id)}
+                    disabled={!currentUserId || pendingLikes[post._id]}
                     style={{
                       padding: "8px 15px",
                       border: "none",
@@ -310,13 +287,25 @@ const handleSave = async (postId) => {
                         ? "#e0245e"
                         : "#0095f6",
                       color: "white",
-                      cursor: "pointer",
+                      cursor: !currentUserId || pendingLikes[post._id]
+                        ? "not-allowed"
+                        : "pointer",
                     }}
                   >
-                    {isLikedByCurrentUser ? "💔 Unlike" : "❤️ Like"}
+                    {pendingLikes[post._id]
+                      ? "Updating..."
+                      : isLikedByCurrentUser
+                        ? "💔 Unlike"
+                        : "❤️ Like"}
                   </button>
                 );
               })()}
+
+              {likeErrors[post._id] && (
+                <p role="alert" style={{ color: "red" }}>
+                  {likeErrors[post._id]}
+                </p>
+              )}
 
               <button
                 onClick={() => handleSave(post._id)}
