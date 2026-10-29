@@ -1,16 +1,66 @@
-# React + Vite
+# Instagram Clone
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A full-stack Instagram-inspired social application built with React, Vite,
+Express, MongoDB, and Socket.IO.
 
-Currently, two official plugins are available:
+## Prerequisites
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Node.js and npm
+- A MongoDB database
+- Cloudinary credentials for media uploads
 
-## React Compiler
+## Local development
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+1. Install backend dependencies and configure its environment:
 
-## Expanding the ESLint configuration
+   ```powershell
+   cd backend
+   npm install
+   ```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+   Create `backend/.env` with:
+
+   ```dotenv
+   MONGO_URI=your_mongodb_connection_string
+   JWT_SECRET=your_long_random_secret
+   CLIENT_URL=http://localhost:5173
+   CLOUDINARY_CLOUD_NAME=your_cloud_name
+   CLOUDINARY_API_KEY=your_cloudinary_api_key
+   CLOUDINARY_API_SECRET=your_cloudinary_api_secret
+   PORT=5000
+   ```
+
+2. Start the backend:
+
+   ```powershell
+   npm run dev
+   ```
+
+3. In a separate terminal, install and start the frontend:
+
+   ```powershell
+   cd frontend
+   npm install
+   npm run dev
+   ```
+
+   The frontend uses `http://localhost:5000/api` for API requests and derives
+   the Socket.IO server origin from that URL by default.
+
+## Frontend configuration
+
+Set `VITE_API_URL` in the frontend environment to the backend API base URL,
+including `/api` (for example, `https://api.example.com/api`). The Socket.IO
+connection uses that URL's origin by default. Set `VITE_SOCKET_URL` only when
+the socket server is hosted at a different origin.
+
+Vite exposes `VITE_*` variables to browser code, so do not put secrets in them.
+
+## Quality checks
+
+Run these commands from `frontend`:
+
+```powershell
+npm run lint
+npm run build
+```
