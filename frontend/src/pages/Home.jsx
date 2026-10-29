@@ -1,12 +1,9 @@
 import { useContext, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { AuthContext } from "../context/AuthContext";
 
 const Home = () => {
-  const navigate = useNavigate();
   const { user } = useContext(AuthContext);
-  console.log("Current logged-in user:", user);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -14,7 +11,12 @@ const Home = () => {
   const [savedPosts, setSavedPosts] = useState([]);
   const [pendingLikes, setPendingLikes] = useState({});
   const [likeErrors, setLikeErrors] = useState({});
+  const [pendingComments, setPendingComments] = useState({});
+  const [pendingCommentDeletes, setPendingCommentDeletes] = useState({});
+  const [commentErrors, setCommentErrors] = useState({});
   const pendingLikeIds = useRef(new Set());
+  const pendingCommentPostIds = useRef(new Set());
+  const pendingCommentIds = useRef(new Set());
 
   useEffect(() => {
     fetchPosts();
@@ -113,54 +115,106 @@ const handleLike = async (postId) => {
              
   
 const handleComment = async (postId) => {
+  if (pendingCommentPostIds.current.has(postId)) {
+    return;
+  }
+
+  const text = commentText[postId]?.trim();
+
+  if (!text) {
+    setCommentErrors((previous) => ({
+      ...previous,
+      [postId]: "Comment text is required.",
+    }));
+    return;
+  }
+
+  if (!getCurrentUserId()) {
+    setCommentErrors((previous) => ({
+      ...previous,
+      [postId]: "Please log in to comment.",
+    }));
+    return;
+  }
+
+  pendingCommentPostIds.current.add(postId);
+  setPendingComments((previous) => ({ ...previous, [postId]: true }));
+  setCommentErrors((previous) => ({ ...previous, [postId]: "" }));
+
   try {
+    const response = await api.post(`/comments/${postId}`, { text });
 
-    const text = commentText[postId];
-
-    if (!text) {
-      return;
+    if (!Array.isArray(response.data.comments)) {
+      throw new Error("The server returned an invalid comments response.");
     }
-
-
-    const response = await api.post(
-      `/comments/${postId}`,
-      {
-        text,
-      }
-    );
-
-
-    console.log(
-      "Comment response:",
-      response.data
-    );
-
 
     setPosts((previousPosts) =>
       previousPosts.map((post) =>
         post._id === postId
-          ? {
-              ...post,
-              comments: response.data.comments,
-            }
+          ? { ...post, comments: response.data.comments }
           : post
       )
     );
 
-
-    setCommentText({
-      ...commentText,
-      [postId]: "",
-    });
-
-
+    setCommentText((previous) => ({ ...previous, [postId]: "" }));
   } catch (error) {
+    console.error("Failed to add comment:", error.response?.data || error);
+    setCommentErrors((previous) => ({
+      ...previous,
+      [postId]:
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to add comment. Please try again.",
+    }));
+  } finally {
+    pendingCommentPostIds.current.delete(postId);
+    setPendingComments((previous) => ({ ...previous, [postId]: false }));
+  }
+};
 
-    console.error(
-      "Comment error:",
-      error.response?.data || error.message
+const handleDeleteComment = async (postId, commentId) => {
+  if (pendingCommentIds.current.has(commentId)) {
+    return;
+  }
+
+  pendingCommentIds.current.add(commentId);
+  setPendingCommentDeletes((previous) => ({
+    ...previous,
+    [commentId]: true,
+  }));
+  setCommentErrors((previous) => ({ ...previous, [postId]: "" }));
+
+  try {
+    const response = await api.delete(
+      `/comments/${postId}/${commentId}`
     );
 
+    if (!Array.isArray(response.data.comments)) {
+      throw new Error("The server returned an invalid comments response.");
+    }
+
+    setPosts((previousPosts) =>
+      previousPosts.map((post) =>
+        post._id === postId
+          ? { ...post, comments: response.data.comments }
+          : post
+      )
+    );
+  } catch (error) {
+    console.error("Failed to delete comment:", error.response?.data || error);
+    setCommentErrors((previous) => ({
+      ...previous,
+      [postId]:
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to delete comment. Please try again.",
+    }));
+  } finally {
+    pendingCommentIds.current.delete(commentId);
+    setPendingCommentDeletes((previous) => ({
+      ...previous,
+      [commentId]: false,
+    }));
   }
 };
 
@@ -351,14 +405,22 @@ const handleSave = async (postId) => {
 
   <button
     onClick={() => handleComment(post._id)}
+    disabled={!getCurrentUserId() || pendingComments[post._id]}
     style={{
       padding:"8px",
-      cursor:"pointer",
+      cursor: !getCurrentUserId() || pendingComments[post._id]
+        ? "not-allowed"
+        : "pointer",
     }}
   >
-    Comment
+    {pendingComments[post._id] ? "Commenting..." : "Comment"}
   </button>
 
+  {commentErrors[post._id] && (
+    <p role="alert" style={{ color: "red" }}>
+      {commentErrors[post._id]}
+    </p>
+  )}
 
 </div>
 
@@ -387,24 +449,30 @@ const handleSave = async (postId) => {
       </p>
     </div>
 
-    <button
-      onClick={() =>
-        handleDeleteComment(
-          post._id,
-          comment._id
-        )
-      }
-      style={{
-        border: "none",
-        background: "transparent",
-        color: "red",
-        cursor: "pointer",
-      }}
-    >
-      Delete
-    </button>
+    {normalizeLikeId(comment.user) === getCurrentUserId()?.toString() && (
+      <button
+        onClick={() => handleDeleteComment(post._id, comment._id)}
+        disabled={pendingCommentDeletes[comment._id]}
+        style={{
+          border: "none",
+          background: "transparent",
+          color: "red",
+          cursor: pendingCommentDeletes[comment._id]
+            ? "not-allowed"
+            : "pointer",
+        }}
+      >
+        {pendingCommentDeletes[comment._id] ? "Deleting..." : "Delete"}
+      </button>
+    )}
   </div>
 ))}
+
+{commentErrors[post._id] && (
+  <p role="alert" style={{ color: "red" }}>
+    {commentErrors[post._id]}
+  </p>
+)}
 
 </div>
 
